@@ -1,0 +1,59 @@
+.wrapper {
+  width: 100%;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 28px;
+}
+
+.track {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 8px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-surface);
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+}
+
+/* Active states per role */
+.tab.candidate {
+  background: var(--bg-surface);
+  color: var(--cand-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cand-accent) 30%, transparent);
+}
+
+.tab.hr {
+  background: var(--bg-surface);
+  color: var(--hr-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hr-accent) 30%, transparent);
+}
+
+.tab.admin {
+  background: var(--bg-surface);
+  color: var(--admin-accent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--admin-accent) 30%, transparent);
+}

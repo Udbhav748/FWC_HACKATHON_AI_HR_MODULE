@@ -1,0 +1,129 @@
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+
+const request = async (endpoint, options = {}) => {
+  const token = localStorage.getItem("talentos_token");
+  const res = await fetch(`${BASE_URL}${endpoint}`, {
+    headers: {
+      "Content-Type": "application/json",
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+    ...options,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    if (data.errors?.length) throw new Error(data.errors.map((e) => e.message).join(" · "));
+    throw new Error(data.message || "Something went wrong");
+  }
+  return data;
+};
+
+export const authAPI = {
+  login:    (p) => request("/auth/login",    { method: "POST", body: JSON.stringify(p) }),
+  register: (p) => request("/auth/register", { method: "POST", body: JSON.stringify(p) }),
+  getMe:    ()  => request("/auth/me"),
+  logout:   ()  => request("/auth/logout",   { method: "POST" }),
+};
+
+export const jobsAPI = {
+  getAll:               ()                          => request("/jobs"),
+  getMy:                ()                          => request("/jobs/my"),
+  getApplied:           ()                          => request("/jobs/applied"),
+  create:               (p)                         => request("/jobs",            { method: "POST",   body: JSON.stringify(p) }),
+  delete:               (id)                        => request(`/jobs/${id}`,       { method: "DELETE" }),
+  apply:                (id)                        => request(`/jobs/${id}/apply`, { method: "POST"   }),
+  updateApplicantStatus:(jobId, candidateId, status) => request(`/jobs/${jobId}/applicants/${candidateId}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+};
+
+export const candidateAPI = {
+  getProfile:       ()        => request("/candidate/profile"),
+  updateProfile:    (p)       => request("/candidate/profile",              { method: "PUT",    body: JSON.stringify(p) }),
+  getOnboarding:    ()        => request("/candidate/onboarding"),
+  submitDoc:        (p)       => request("/candidate/onboarding/docs",      { method: "POST",   body: JSON.stringify(p) }),
+  deleteDoc:        (docId)   => request(`/candidate/onboarding/docs/${docId}`, { method: "DELETE" }),
+};
+
+export const hrAPI = {
+  getOnboarding:       ()            => request("/hr/onboarding"),
+  generateOnboarding:  (candidateId) => request(`/hr/onboarding/generate/${candidateId}`, { method: "POST" }),
+  bulkScreen: (formData) => {
+    const token = localStorage.getItem("talentos_token");
+    if (!token) throw new Error("Not authenticated — please log in again");
+    return fetch(`${BASE_URL}/hr/bulk-screen`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Bulk screening failed");
+      return data;
+    });
+  },
+};
+
+export const bulkScreeningAPI = {
+  createSession: (formData) => {
+    const token = localStorage.getItem("talentos_token");
+    if (!token) throw new Error("Not authenticated");
+    return fetch(`${BASE_URL}/hr/bulk-screening/sessions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Upload failed");
+      return data;
+    });
+  },
+  getSessions:           ()          => request("/hr/bulk-screening/sessions"),
+  getSession:            (id)        => request(`/hr/bulk-screening/sessions/${id}`),
+  getCandidates:         (id, qs = "") => request(`/hr/bulk-screening/sessions/${id}/candidates${qs}`),
+  updateCandidateStatus: (id, status) => request(`/hr/bulk-screening/candidates/${id}/status`, { method: "PATCH", body: JSON.stringify({ status }) }),
+  exportSession: (id) => {
+    const token = localStorage.getItem("talentos_token");
+    return fetch(`${BASE_URL}/hr/bulk-screening/sessions/${id}/export`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(async (res) => {
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `Screening_${id}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  },
+};
+
+export const interviewAPI = {
+  schedule:          (p)          => request("/interviews",                    { method: "POST",  body: JSON.stringify(p) }),
+  getHR:             ()           => request("/interviews/hr"),
+  getCandidate:      ()           => request("/interviews/candidate"),
+  updateStatus:      (id, status) => request(`/interviews/${id}/status`,       { method: "PATCH", body: JSON.stringify({ status }) }),
+  submitAnswers:     (id, answers) => request(`/interviews/${id}/answers`,     { method: "PATCH", body: JSON.stringify({ answers }) }),
+};
+
+export const aiAPI = {
+  rankCandidates:             (jobId, topN) => request(`/ai/rank-candidates/${jobId}`, { method: "POST", body: JSON.stringify({ topN }) }),
+  startMockInterview:         (p)     => request("/ai/mock-interview/start",        { method: "POST", body: JSON.stringify(p) }),
+  evaluateMockInterview:      (p)     => request("/ai/mock-interview/evaluate",     { method: "POST", body: JSON.stringify(p) }),
+  reviewProfile:              ()      => request("/ai/profile-review",              { method: "POST" }),
+  generateInterviewQuestions: (id)    => request(`/ai/interview-questions/${id}`,   { method: "POST" }),
+  evaluateInterview:          (id)    => request(`/ai/evaluate-interview/${id}`,    { method: "POST" }),
+};
+
+export const adminAPI = {
+  getUsers:      (params = "") => request(`/admin/users${params}`),
+  toggleUser:    (id)          => request(`/admin/users/${id}/toggle`, { method: "PATCH" }),
+  resetPassword: (id, newPassword) => request(`/admin/users/${id}/reset-password`, { method: "PATCH", body: JSON.stringify({ newPassword }) }),
+  getAnalytics:  ()            => request("/admin/analytics"),
+  getAllJobs:     ()            => request("/admin/jobs"),
+  toggleJob:     (id)          => request(`/admin/jobs/${id}/toggle`,  { method: "PATCH" }),
+  getWorkforce:  ()            => request("/admin/workforce"),
+  getAIInsights: (metrics)     => request("/admin/ai-insights",        { method: "POST", body: JSON.stringify({ metrics }) }),
+};
+
+export const saveToken  = (t) => localStorage.setItem("talentos_token", t);
+export const clearToken = ()  => localStorage.removeItem("talentos_token");
+export const getToken   = ()  => localStorage.getItem("talentos_token");
